@@ -39,7 +39,7 @@ typedef union{
 
 void generateSteps();
 
-uint8_t i, checksumTX, checksumRX, stateRead;
+uint8_t i, checksumTX, checksumRX, stateRead, checksum;
 uint8_t steps[256];
 uint16_t lenghtPL, lenghtPLSaved;
 uint16_t voltage;
@@ -48,14 +48,41 @@ uint8_t rxBuff[256], txBuff[256], indexWriteTX, indexReadTX, indexReadRX, indexW
 
 void generateSteps(uint8_t f){
   for (uint8_t i = 0; i < 255; i++){
+    if (i < 128){
+      steps[i] = i * 2;
+    } else {
+      steps[i] = (255 - i) * 2;
+    }
+  }
+}
+
+void generateSaw(){
+  for (uint8_t i = 0; i < 255; i++){
+    steps[i] = i;
+  }
+}
+
+void generateSin(uint8_t f){
+  for (uint8_t i = 0; i < 255; i++){
     steps[i] = 127*sin(2*pi*f*i/256)+128;
   }
+  steps[255] = 128;
 }
 
 void PutHeaderIntx(){
   txBuff[indexWriteTX++] = 0xE0;
   txBuff[indexWriteTX++] = 0x0E;
   checksumTX = 0x0E + 0xE0;
+}
+
+void GenerateSquare(){
+  for (uint8_t i = 0; i < 255; i++){
+    if (i < 128){
+      steps [i] = 255;
+    } else {
+      steps[i] = 0;
+    }
+  }
 }
 
 void PutByteIntx(uint8_t byte){
@@ -154,7 +181,7 @@ void loop() {
       Serial.write(txBuff[indexReadTX++]);
     }
   }
-  if ((millis() - timeout) >= 20){
+  if ((millis() - timeout) >= 0){
     digitalWrite(BIT0, steps[i]      & 1);
     digitalWrite(BIT1, steps[i] >> 1 & 1);
     digitalWrite(BIT2, steps[i] >> 2 & 1);
@@ -167,7 +194,7 @@ void loop() {
     timeout = millis();
   }
 
-  /*if ((millis() - timeout2) >= 20){
+  if ((millis() - timeout2) >= 0){
     voltage = analogRead(READER);
     checksum = 0x0E + 0xE0 + 0x05 + 0x3A + 0xB0 + 0x02 + (voltage & 0x00FF) + (voltage >> 8);
     Serial.write(0xE0);
@@ -182,5 +209,5 @@ void loop() {
     Serial.write(checksum);
     //Serial.println(voltage);
     timeout2 = millis();
-  }*/
+  }
 }
