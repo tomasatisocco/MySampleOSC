@@ -42,9 +42,9 @@ void generateSteps();
 uint8_t i, checksumTX, checksumRX, stateRead, checksum;
 uint8_t steps[256];
 uint16_t lenghtPL, lenghtPLSaved;
-uint16_t voltage;
+uint16_t voltageRead[],voltageWrite[];
 unsigned long timeout, timeout2;
-uint8_t rxBuff[256], txBuff[256], indexWriteTX, indexReadTX, indexReadRX, indexWriteRX;
+uint8_t rxBuff[256], txBuff[256], indexWriteTX, indexReadTX, indexReadRX, indexWriteRX, indexVoltageWrite, indexVoltageRead;
 
 void generateSteps(uint8_t f){
   for (uint8_t i = 0; i < 255; i++){
@@ -181,7 +181,7 @@ void loop() {
       Serial.write(txBuff[indexReadTX++]);
     }
   }
-  if ((millis() - timeout) >= 0){
+  if ((millis() - timeout) >= 10){
     digitalWrite(BIT0, steps[i]      & 1);
     digitalWrite(BIT1, steps[i] >> 1 & 1);
     digitalWrite(BIT2, steps[i] >> 2 & 1);
@@ -192,22 +192,26 @@ void loop() {
     digitalWrite(BIT7, steps[i] >> 7 & 1);
     i++;
     timeout = millis();
+    voltageRead[indexVoltageRead++] = analogRead(READER);
   }
 
-  if ((millis() - timeout2) >= 0){
-    voltage = analogRead(READER);
-    checksum = 0x0E + 0xE0 + 0x05 + 0x3A + 0xB0 + 0x02 + (voltage & 0x00FF) + (voltage >> 8);
-    Serial.write(0xE0);
-    Serial.write(0x0E);
-    Serial.write(0x05);
-    Serial.write(0x00);
-    Serial.write(0x3A);
-    Serial.write(0xB0);
-    Serial.write(0x02);// enviar cantidad de bytes no cantidad de muestras.
-    Serial.write(voltage & 0x00FF);
-    Serial.write(voltage >> 8);
-    Serial.write(checksum);
-    //Serial.println(voltage);
-    timeout2 = millis();
+  if ((millis() - timeout2) > 200){
+    voltageWrite[0] = 0xE0;
+    voltageWrite[1] = 0x0E;
+    voltageWrite[2] = 0x00;
+    voltageWrite[3] = indexVoltageRead * 2 + 3;
+    voltageWrite[4] = 0xB0;
+    voltageWrite[5] = indexVoltageRead * 2;
+    checksum = 0x0E + 0xE0 + voltageWrite[3] + 0x3A + 0xB0;
+    for (uint8_t i = 6; i < indexVoltageRead * 2; i++){
+      if (!(i % 2)){
+        voltageWrite[i] = (voltageRead[i - 6] & 0xFF);
+        checksum += voltageWrite[i];
+      } else {
+        voltageWrite[i] = (voltageRead[i - 6] >> 8);
+        checksum += voltageWrite[i];
+      }
+    }
+    voltageWrite[indexVoltageRead + 5] = checksum;
   }
 }
