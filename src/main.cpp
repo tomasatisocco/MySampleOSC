@@ -41,6 +41,10 @@ typedef union{
 _flag flag1;
 
 void generateSteps();
+void PutByteInTx(uint8_t byte);
+void PurHeaderInTx();
+void AddDataToTXBuff();
+void GenerateAndReadVoltage();
 
 uint8_t i, checksumTX, checksumRX, stateRead, checksum;
 uint8_t steps[256];
@@ -78,6 +82,11 @@ void PutHeaderIntx(){
   checksumTX = 0x0E + 0xE0;
 }
 
+void PutByteIntx(uint8_t byte){
+  txBuff[indexWriteTX++] = byte;
+  checksumTX += byte;
+}
+
 void GenerateSquare(){
   for (uint8_t i = 0; i < 255; i++){
     if (i < 128){
@@ -88,9 +97,38 @@ void GenerateSquare(){
   }
 }
 
-void PutByteIntx(uint8_t byte){
-  txBuff[indexWriteTX++] = byte;
-  checksumTX += byte;
+void GenerateAndReadVoltage(unsigned long waitingTime){
+  if ((millis() - timeout) >= waitingTime){
+    digitalWrite(BIT0, steps[i]      & 1);
+    digitalWrite(BIT1, steps[i] >> 1 & 1);
+    digitalWrite(BIT2, steps[i] >> 2 & 1);
+    digitalWrite(BIT3, steps[i] >> 3 & 1);
+    digitalWrite(BIT4, steps[i] >> 4 & 1);
+    digitalWrite(BIT5, steps[i] >> 5 & 1);
+    digitalWrite(BIT6, steps[i] >> 6 & 1);
+    digitalWrite(BIT7, steps[i] >> 7 & 1);
+    i++;
+    timeout = millis();
+    voltageRead[indexVoltageRead++] = analogRead(READER);
+  }
+}
+
+void AddDataToTXBuff(unsigned long waitingTime){
+  if ((millis() - timeout2) > waitingTime){
+    PutHeaderIntx();
+    PutByteIntx(indexVoltageRead * 2 + 3);
+    PutByteIntx(0x00);
+    PutByteIntx(0x3A);
+    PutByteIntx(0xB0);
+    PutByteIntx(indexVoltageRead * 2);
+    for (uint8_t i = 0; i < indexVoltageRead; i++){
+      PutByteIntx(voltageRead[i] & 0xFF);
+      PutByteIntx(voltageRead[i] >> 8);
+    }
+    PutByteIntx(checksumTX);
+    indexVoltageRead = 0;
+    timeout2 = millis();
+  }
 }
 
 void Return(){
@@ -107,28 +145,13 @@ void Return(){
   }
 }
 
-void setup() {                                                                                                                                                                                                                                          //Tomas Tisocco maderfaker
-
-  pinMode(BIT0, OUTPUT);
-  pinMode(BIT1, OUTPUT);
-  pinMode(BIT2, OUTPUT);
-  pinMode(BIT3, OUTPUT);
-  pinMode(BIT4, OUTPUT);
-  pinMode(BIT5, OUTPUT);
-  pinMode(BIT6, OUTPUT);
-  pinMode(BIT7, OUTPUT);
-
-  stateRead = WAITINGE0;
-  pinMode(10, OUTPUT);
-  generateSteps(1);
-
-  Serial.begin(9600);
-}
-
-void loop() {
+void ReadRXBuff(){
   while (Serial.available()){
     rxBuff[indexWriteRX++] = Serial.read();
   }
+}
+
+void DecodeRXBuff(){
   if (indexReadRX != indexWriteRX){
     switch(stateRead){
       case WAITINGE0:
@@ -179,38 +202,42 @@ void loop() {
         stateRead = WAITINGE0;
     }
   }
+}
+
+void SendTXData(){
   if(indexWriteTX != indexReadTX){
     if(Serial.availableForWrite()){
       Serial.write(txBuff[indexReadTX++]);
     }
   }
-  if ((millis() - timeout) >= 20){
-    digitalWrite(BIT0, steps[i]      & 1);
-    digitalWrite(BIT1, steps[i] >> 1 & 1);
-    digitalWrite(BIT2, steps[i] >> 2 & 1);
-    digitalWrite(BIT3, steps[i] >> 3 & 1);
-    digitalWrite(BIT4, steps[i] >> 4 & 1);
-    digitalWrite(BIT5, steps[i] >> 5 & 1);
-    digitalWrite(BIT6, steps[i] >> 6 & 1);
-    digitalWrite(BIT7, steps[i] >> 7 & 1);
-    i++;
-    timeout = millis();
-    voltageRead[indexVoltageRead++] = analogRead(READER);
-  }
+}
 
-  if ((millis() - timeout2) > 200){
-    PutHeaderIntx();
-    PutByteIntx(indexVoltageRead * 2 + 3);
-    PutByteIntx(0x00);
-    PutByteIntx(0x3A);
-    PutByteIntx(0xB0);
-    PutByteIntx(indexVoltageRead * 2);
-    for (uint8_t i = 0; i < indexVoltageRead; i++){
-      PutByteIntx(voltageRead[i] & 0xFF);
-      PutByteIntx(voltageRead[i] >> 8);
-    }
-    PutByteIntx(checksumTX);
-    indexVoltageRead = 0;
-    timeout2 = millis();
-  }
+void setup() {                                                                                                                                                                                                                                          //Tomas Tisocco maderfaker
+
+  pinMode(BIT0, OUTPUT);
+  pinMode(BIT1, OUTPUT);
+  pinMode(BIT2, OUTPUT);
+  pinMode(BIT3, OUTPUT);
+  pinMode(BIT4, OUTPUT);
+  pinMode(BIT5, OUTPUT);
+  pinMode(BIT6, OUTPUT);
+  pinMode(BIT7, OUTPUT);
+
+  stateRead = WAITINGE0;
+  pinMode(10, OUTPUT);
+  generateSin(1);
+
+  Serial.begin(9600);
+}
+
+void loop() {
+  ReadRXBuff();
+
+  DecodeRXBuff();
+  
+  GenerateAndReadVoltage(20);
+
+  AddDataToTXBuff(200);
+
+  SendTXData();
 }
