@@ -36,13 +36,16 @@ typedef union{
 #define   WAITINGPL   5
 
 #define RUN flag1.bit.b0
+#define SENDDATA flag1.bit.b1
+
+_flag flag1;
 
 void generateSteps();
 
 uint8_t i, checksumTX, checksumRX, stateRead, checksum;
 uint8_t steps[256];
 uint16_t lenghtPL, lenghtPLSaved;
-uint16_t voltageRead[],voltageWrite[];
+uint16_t voltageRead[30],voltageWrite[30];
 unsigned long timeout, timeout2;
 uint8_t rxBuff[256], txBuff[256], indexWriteTX, indexReadTX, indexReadRX, indexWriteRX, indexVoltageWrite, indexVoltageRead;
 
@@ -181,7 +184,7 @@ void loop() {
       Serial.write(txBuff[indexReadTX++]);
     }
   }
-  if ((millis() - timeout) >= 10){
+  if ((millis() - timeout) >= 20){
     digitalWrite(BIT0, steps[i]      & 1);
     digitalWrite(BIT1, steps[i] >> 1 & 1);
     digitalWrite(BIT2, steps[i] >> 2 & 1);
@@ -196,22 +199,18 @@ void loop() {
   }
 
   if ((millis() - timeout2) > 200){
-    voltageWrite[0] = 0xE0;
-    voltageWrite[1] = 0x0E;
-    voltageWrite[2] = 0x00;
-    voltageWrite[3] = indexVoltageRead * 2 + 3;
-    voltageWrite[4] = 0xB0;
-    voltageWrite[5] = indexVoltageRead * 2;
-    checksum = 0x0E + 0xE0 + voltageWrite[3] + 0x3A + 0xB0;
-    for (uint8_t i = 6; i < indexVoltageRead * 2; i++){
-      if (!(i % 2)){
-        voltageWrite[i] = (voltageRead[i - 6] & 0xFF);
-        checksum += voltageWrite[i];
-      } else {
-        voltageWrite[i] = (voltageRead[i - 6] >> 8);
-        checksum += voltageWrite[i];
-      }
+    PutHeaderIntx();
+    PutByteIntx(indexVoltageRead * 2 + 3);
+    PutByteIntx(0x00);
+    PutByteIntx(0x3A);
+    PutByteIntx(0xB0);
+    PutByteIntx(indexVoltageRead * 2);
+    for (uint8_t i = 0; i < indexVoltageRead; i++){
+      PutByteIntx(voltageRead[i] & 0xFF);
+      PutByteIntx(voltageRead[i] >> 8);
     }
-    voltageWrite[indexVoltageRead + 5] = checksum;
+    PutByteIntx(checksumTX);
+    indexVoltageRead = 0;
+    timeout2 = millis();
   }
 }
