@@ -35,23 +35,27 @@ typedef union{
 #define   WAITING3A   4
 #define   WAITINGPL   5
 
-#define RUN flag1.bit.b0
+#define SCOPEISON flag1.bit.b0
 #define SENDDATA flag1.bit.b1
 
 _flag flag1;
 
 void generateSteps();
-void PutByteInTx(uint8_t byte);
+void GenerateAndReadVoltage(unsigned long waitingTime);
+void ReadRXBuff();
+void DecodeRXBuff();
+void AddDataToTXBuff(unsigned long waitingTime);
 void PurHeaderInTx();
-void AddDataToTXBuff();
-void GenerateAndReadVoltage();
+void PutByteInTx(uint8_t byte);
+boolean RXBuffHasData();
+boolean TXBuffHasData();
 
-uint8_t i, checksumTX, checksumRX, stateRead, checksum;
-uint8_t steps[256];
+uint8_t checksumTX, checksumRX, stateRead, checksum;
+uint8_t indexWriteTX, indexReadTX, indexReadRX, indexWriteRX, indexVoltageWrite, indexVoltageRead, indexSteps;
+uint8_t steps[256], rxBuff[256], txBuff[256];
 uint16_t lenghtPL, lenghtPLSaved;
 uint16_t voltageRead[30],voltageWrite[30];
 unsigned long timeout, timeout2;
-uint8_t rxBuff[256], txBuff[256], indexWriteTX, indexReadTX, indexReadRX, indexWriteRX, indexVoltageWrite, indexVoltageRead;
 
 void generateSteps(uint8_t f){
   for (uint8_t i = 0; i < 255; i++){
@@ -76,17 +80,6 @@ void generateSin(uint8_t f){
   steps[255] = 128;
 }
 
-void PutHeaderIntx(){
-  txBuff[indexWriteTX++] = 0xE0;
-  txBuff[indexWriteTX++] = 0x0E;
-  checksumTX = 0x0E + 0xE0;
-}
-
-void PutByteIntx(uint8_t byte){
-  txBuff[indexWriteTX++] = byte;
-  checksumTX += byte;
-}
-
 void GenerateSquare(){
   for (uint8_t i = 0; i < 255; i++){
     if (i < 128){
@@ -99,15 +92,15 @@ void GenerateSquare(){
 
 void GenerateAndReadVoltage(unsigned long waitingTime){
   if ((millis() - timeout) >= waitingTime){
-    digitalWrite(BIT0, steps[i]      & 1);
-    digitalWrite(BIT1, steps[i] >> 1 & 1);
-    digitalWrite(BIT2, steps[i] >> 2 & 1);
-    digitalWrite(BIT3, steps[i] >> 3 & 1);
-    digitalWrite(BIT4, steps[i] >> 4 & 1);
-    digitalWrite(BIT5, steps[i] >> 5 & 1);
-    digitalWrite(BIT6, steps[i] >> 6 & 1);
-    digitalWrite(BIT7, steps[i] >> 7 & 1);
-    i++;
+    digitalWrite(BIT0, steps[indexSteps]      & 1);
+    digitalWrite(BIT1, steps[indexSteps] >> 1 & 1);
+    digitalWrite(BIT2, steps[indexSteps] >> 2 & 1);
+    digitalWrite(BIT3, steps[indexSteps] >> 3 & 1);
+    digitalWrite(BIT4, steps[indexSteps] >> 4 & 1);
+    digitalWrite(BIT5, steps[indexSteps] >> 5 & 1);
+    digitalWrite(BIT6, steps[indexSteps] >> 6 & 1);
+    digitalWrite(BIT7, steps[indexSteps] >> 7 & 1);
+    indexSteps++;
     timeout = millis();
     voltageRead[indexVoltageRead++] = analogRead(READER);
   }
@@ -131,6 +124,94 @@ void AddDataToTXBuff(unsigned long waitingTime){
   }
 }
 
+void PutHeaderIntx(){
+  txBuff[indexWriteTX++] = 0xE0;
+  txBuff[indexWriteTX++] = 0x0E;
+  checksumTX = 0x0E + 0xE0;
+}
+
+void PutByteIntx(uint8_t byte){
+  txBuff[indexWriteTX++] = byte;
+  checksumTX += byte;
+}
+
+boolean RXBuffHasData(){
+  if (indexReadRX != indexWriteRX){
+    return true;
+  } else {
+    return false;
+  }
+}
+
+boolean TXBuffHasData(){
+  if (indexReadTX != indexWriteTX){
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void ReadRXBuff(){
+  while (Serial.available()){
+    rxBuff[indexWriteRX++] = Serial.read();
+  }
+  if (RXBuffHasData()){
+    DecodeRXBuff();
+  }
+}
+
+void DecodeRXBuff(){
+  switch(stateRead){
+    case WAITINGE0:
+      if( rxBuff[indexReadRX++] == 0xE0 ){
+        stateRead = WAITING0E;
+      }
+    break;
+      case WAITING0E:
+      if( rxBuff[indexReadRX++] == 0x0E ){
+        stateRead = WAITINGLB;
+      } else {
+        stateRead = WAITINGE0;
+      }
+    break;
+    case WAITINGLB:
+      lenghtPL = rxBuff[indexReadRX];
+      lenghtPLSaved = (rxBuff[indexReadRX] - 1);
+      checksumRX = 0xE0 + 0x0E + rxBuff[indexReadRX];
+      stateRead = WAITINGHB;
+      indexReadRX++;
+    break;
+    case WAITINGHB:
+      stateRead = WAITING3A;
+      lenghtPL = lenghtPL + 256 * rxBuff[indexReadRX];
+      checksumRX += rxBuff[indexReadRX];
+      indexReadRX++;
+    break;
+    case WAITING3A:
+      if (rxBuff[indexReadRX++] == 0x3A){
+        checksumRX += 0x3A;
+        stateRead = WAITINGPL;
+      }
+    break;
+    case WAITINGPL:
+      if (lenghtPL > 1){
+        checksumRX += rxBuff[indexReadRX];
+      }
+      lenghtPL--;
+      if (lenghtPL == 0){
+        stateRead = WAITINGE0;
+        if (checksumRX == rxBuff[indexReadRX]){
+          Return();
+        }
+      }
+      indexReadRX++;
+    break;
+    default:
+      stateRead = WAITINGE0;
+    break;
+  }
+}
+
 void Return(){
   switch (rxBuff[(indexReadRX - lenghtPLSaved)]){
     case ALIVE:
@@ -145,67 +226,8 @@ void Return(){
   }
 }
 
-void ReadRXBuff(){
-  while (Serial.available()){
-    rxBuff[indexWriteRX++] = Serial.read();
-  }
-}
-
-void DecodeRXBuff(){
-  if (indexReadRX != indexWriteRX){
-    switch(stateRead){
-      case WAITINGE0:
-        if( rxBuff[indexReadRX++] == 0xE0 ){
-          stateRead = WAITING0E;
-        }
-      break;
-        case WAITING0E:
-        if( rxBuff[indexReadRX++] == 0x0E ){
-          stateRead = WAITINGLB;
-        } else {
-          stateRead = WAITINGE0;
-        }
-      break;
-      case WAITINGLB:
-        lenghtPL = rxBuff[indexReadRX];
-        lenghtPLSaved = (rxBuff[indexReadRX] - 1);
-        checksumRX = 0xE0 + 0x0E + rxBuff[indexReadRX];
-        stateRead = WAITINGHB;
-        indexReadRX++;
-      break;
-      case WAITINGHB:
-        stateRead = WAITING3A;
-        lenghtPL = lenghtPL + 256 * rxBuff[indexReadRX];
-        checksumRX = checksumRX + rxBuff[indexReadRX];
-        indexReadRX++;
-      break;
-      case WAITING3A:
-        if (rxBuff[indexReadRX++] == 0x3A){
-          checksumRX = checksumRX + 0x3A;
-          stateRead = WAITINGPL;
-        }
-      break;
-      case WAITINGPL:
-        if (lenghtPL > 1){
-          checksumRX = checksumRX + rxBuff[indexReadRX];
-        }
-        lenghtPL--;
-        if (lenghtPL == 0){
-          stateRead = WAITINGE0;
-          if (checksumRX == rxBuff[indexReadRX]){
-            Return();
-          }
-        }
-        indexReadRX++;
-      break;
-      default:
-        stateRead = WAITINGE0;
-    }
-  }
-}
-
 void SendTXData(){
-  if(indexWriteTX != indexReadTX){
+  if(TXBuffHasData()){
     if(Serial.availableForWrite()){
       Serial.write(txBuff[indexReadTX++]);
     }
@@ -224,20 +246,23 @@ void setup() {                                                                  
   pinMode(BIT7, OUTPUT);
 
   stateRead = WAITINGE0;
-  pinMode(10, OUTPUT);
+  
   generateSin(1);
 
   Serial.begin(9600);
 }
 
 void loop() {
+
   ReadRXBuff();
 
-  DecodeRXBuff();
-  
-  GenerateAndReadVoltage(20);
+  if (SCOPEISON){
+    // Cambia de valor cada tantos millisegundos como se le indica en el input
+    GenerateAndReadVoltage(20);
 
-  AddDataToTXBuff(200);
+    // Agrega Valores al Buffer de escritura (TX) cada tantos millisegundos ccomo se le indica en el input
+    AddDataToTXBuff(200);
+  }
 
   SendTXData();
 }
