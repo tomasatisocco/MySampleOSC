@@ -28,6 +28,7 @@ typedef union{
 
 #define   ALIVE   0xF0
 #define   ONOFF   0xA6
+#define   BRIDGE  0xA0
 
 #define   WAITINGE0   0
 #define   WAITING0E   1
@@ -54,18 +55,22 @@ boolean TXBuffHasData();
 
 uint8_t checksumTX, checksumRX, stateRead, checksum;
 uint8_t indexWriteTX, indexReadTX, indexReadRX, indexWriteRX, indexVoltageWrite, indexVoltageRead, indexSteps;
-uint8_t steps[256], rxBuff[256], txBuff[256];
+uint8_t steps[40], rxBuff[256], txBuff[256];
 uint16_t lenghtPL, lenghtPLSaved;
 uint16_t voltageRead[30],voltageWrite[30];
 unsigned long timeout, timeout2;
 
 void generateSteps(uint8_t f){
-  for (uint8_t i = 0; i < 255; i++){
-    if (i < 128){
-      steps[i] = i * 2;
-    } else {
-      steps[i] = (255 - i) * 2;
+  uint8_t value = 0xC0;
+  for (uint8_t i = 0; i < 40; i++){
+    if (!(i % 20)){
+      if (value == 0xC0){
+        value = 0x03;
+      } else {
+        value = 0xC0;
+      }
     }
+    steps[i] = value;
   }
 }
 
@@ -102,7 +107,9 @@ void GenerateAndReadVoltage(unsigned long waitingTime){
     digitalWrite(BIT5, steps[indexSteps] >> 5 & 1);
     digitalWrite(BIT6, steps[indexSteps] >> 6 & 1);
     digitalWrite(BIT7, steps[indexSteps] >> 7 & 1);
-    indexSteps++;
+    if (indexSteps++ == 40){
+      indexSteps = 0;
+    }
     timeout = millis();
     voltageRead[indexVoltageRead++] = analogRead(READER);
   }
@@ -233,6 +240,9 @@ void Return(uint8_t id, uint8_t parameter){
         SCOPEISON = 1;
       }
     break;
+    case BRIDGE:
+      generateSteps(1);
+    break; 
   }
 }
 
@@ -257,7 +267,7 @@ void setup() {                                                                  
 
   stateRead = WAITINGE0;
   
-  generateSin(1);
+  generateSteps(1);
 
   Serial.begin(9600);
 }
