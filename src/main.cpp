@@ -27,6 +27,7 @@ typedef union{
 #define pi 3.1415
 
 #define   ALIVE   0xF0
+#define   ONOFF   0xA6
 
 #define   WAITINGE0   0
 #define   WAITING0E   1
@@ -45,8 +46,9 @@ void GenerateAndReadVoltage(unsigned long waitingTime);
 void ReadRXBuff();
 void DecodeRXBuff();
 void AddDataToTXBuff(unsigned long waitingTime);
-void PurHeaderInTx();
-void PutByteInTx(uint8_t byte);
+void PutHeaderIntx();
+void PutByteIntx(uint8_t byte);
+void Return(uint8_t id, uint8_t parameter);
 boolean RXBuffHasData();
 boolean TXBuffHasData();
 
@@ -201,7 +203,7 @@ void DecodeRXBuff(){
       if (lenghtPL == 0){
         stateRead = WAITINGE0;
         if (checksumRX == rxBuff[indexReadRX]){
-          Return();
+          Return(rxBuff[(indexReadRX - lenghtPLSaved)], rxBuff[(indexReadRX - lenghtPLSaved) + 1]);
         }
       }
       indexReadRX++;
@@ -212,8 +214,8 @@ void DecodeRXBuff(){
   }
 }
 
-void Return(){
-  switch (rxBuff[(indexReadRX - lenghtPLSaved)]){
+void Return(uint8_t id, uint8_t parameter){
+  switch (id){
     case ALIVE:
       PutHeaderIntx();
       PutByteIntx(0x03);
@@ -222,6 +224,14 @@ void Return(){
       PutByteIntx(0xF0);
       PutByteIntx(0x0D);
       PutByteIntx(checksumTX);
+    break;
+    case ONOFF:
+      if (parameter == 0x00){
+        SCOPEISON = 0;
+      }
+      if (parameter == 0x01){
+        SCOPEISON = 1;
+      }
     break;
   }
 }
