@@ -233,7 +233,7 @@ void DecodeRXBuff(){
   }
 }
 
-void PutCommandIntTX(uint8_t bytes[], uint16_t lenght){
+void PutCommandInTX(uint8_t bytes[], uint16_t lenght){
   PutHeaderIntx();
   PutByteIntx((lenght & 0x00FF) + 1);
   PutByteIntx((lenght) >> 8);
@@ -248,32 +248,32 @@ void Return(uint8_t id, uint8_t parameter){
   switch (id){
     case ALIVE:{
       uint8_t bytes[2] = {ALIVE, ACK};
-      PutCommandIntTX(bytes,2);
+      PutCommandInTX(bytes,2);
       break;
     }
     case ONOFF:{
       if (parameter == 0x00){
         SCOPEISON = 0;
         uint8_t bytes[3] = {ONOFF, 0x00, ACK};
-        PutCommandIntTX(bytes, 3);
+        PutCommandInTX(bytes, 3);
       }
       if (parameter == 0x01){
         SCOPEISON = 1;
         uint8_t bytes[3] = {ONOFF, 0x01, ACK};
-        PutCommandIntTX(bytes, 3);
+        PutCommandInTX(bytes, 3);
       }
       break;
     }
     case BRIDGE:{
       generateBridge(1);
       uint8_t bytes[2] = {BRIDGE, ACK};
-        PutCommandIntTX(bytes, 2);
+        PutCommandInTX(bytes, 2);
       break;
     }
     case TRIFASICBRIDGE:{
       generateTrifasicBridge();
       uint8_t bytes[2] = {TRIFASICBRIDGE, ACK};
-        PutCommandIntTX(bytes, 2);
+        PutCommandInTX(bytes, 2);
       break;
     }
   }
