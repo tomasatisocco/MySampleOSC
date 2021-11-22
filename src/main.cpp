@@ -76,7 +76,7 @@ void generateBridge(uint8_t f){
   }
 }
 
-void generateTrifasicBridge(){
+void generateTrifasicBridge180(){
   for (uint8_t i = 0; i < 7; i++){
     steps[i] = 0b11100000;
     steps[i + 7] = 0b01110000;
@@ -84,6 +84,17 @@ void generateTrifasicBridge(){
     steps[i + 21] = 0b00011100;
     steps[i + 28] = 0b10001100;
     steps[i + 34] = 0b11000100;
+  }
+}
+
+void generateTrifasicBridge120(){
+  for (uint8_t i = 0; i < 7; i++){
+    steps[i] = 0b11000000;
+    steps[i + 7] = 0b01100000;
+    steps[i + 14] = 0b00110000;
+    steps[i + 21] = 0b00011000;
+    steps[i + 28] = 0b00001100;
+    steps[i + 34] = 0b10000100;
   }
 }
 
@@ -264,7 +275,12 @@ void Return(uint8_t id, uint8_t parameter){
       generateBridge(1);
       break;
     case TRIFASICBRIDGE:
-      generateTrifasicBridge();
+     hasParameter = 1;
+      if (parameter){
+        generateTrifasicBridge120();
+      } else {
+        generateTrifasicBridge180();
+      }
       break;
   }
   SendACK(id, parameter, hasParameter);
