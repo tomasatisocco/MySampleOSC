@@ -233,50 +233,41 @@ void DecodeRXBuff(){
   }
 }
 
-void PutCommandInTX(uint8_t bytes[], uint16_t lenght){
+void SendACK(uint8_t id, uint8_t parameter, uint8_t hasParameter){
   PutHeaderIntx();
-  PutByteIntx((lenght & 0x00FF) + 1);
-  PutByteIntx((lenght) >> 8);
+  PutByteIntx(hasParameter + 3);
+  PutByteIntx(0x00);
   PutByteIntx(0x3A);
-  for (uint8_t i = 0; i < lenght; i++){
-    PutByteIntx(bytes[i]);
+  PutByteIntx(id);
+  if (hasParameter){
+    PutByteIntx(parameter);
   }
+  PutByteIntx(ACK);
   PutByteIntx(checksumTX);
 }
 
 void Return(uint8_t id, uint8_t parameter){
+  uint8_t hasParameter = 0;
   switch (id){
-    case ALIVE:{
-      uint8_t bytes[2] = {ALIVE, ACK};
-      PutCommandInTX(bytes,2);
+    case ALIVE:
       break;
-    }
-    case ONOFF:{
+    case ONOFF:
+      hasParameter = 1;
       if (parameter == 0x00){
         SCOPEISON = 0;
-        uint8_t bytes[3] = {ONOFF, 0x00, ACK};
-        PutCommandInTX(bytes, 3);
       }
       if (parameter == 0x01){
         SCOPEISON = 1;
-        uint8_t bytes[3] = {ONOFF, 0x01, ACK};
-        PutCommandInTX(bytes, 3);
       }
       break;
-    }
-    case BRIDGE:{
+    case BRIDGE:
       generateBridge(1);
-      uint8_t bytes[2] = {BRIDGE, ACK};
-        PutCommandInTX(bytes, 2);
       break;
-    }
-    case TRIFASICBRIDGE:{
+    case TRIFASICBRIDGE:
       generateTrifasicBridge();
-      uint8_t bytes[2] = {TRIFASICBRIDGE, ACK};
-        PutCommandInTX(bytes, 2);
       break;
-    }
   }
+  SendACK(id, parameter, hasParameter);
 }
 
 void SendTXData(){
