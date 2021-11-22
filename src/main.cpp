@@ -31,6 +31,7 @@ typedef union{
 #define   ONOFF           0xA6
 #define   BRIDGE          0xA0
 #define   TRIFASICBRIDGE  0xA1
+#define   PULSESIZEBRIDGE 0xA2
 
 #define   WAITINGE0   0
 #define   WAITING0E   1
@@ -62,10 +63,10 @@ uint16_t lenghtPL, lenghtPLSaved;
 uint16_t voltageRead[30],voltageWrite[30];
 unsigned long timeout, timeout2;
 
-void generateBridge(uint8_t f){
+void generateBridge(uint8_t anchoDePulso){
   uint8_t value = 0xC0;
   for (uint8_t i = 0; i < 42; i++){
-    if (!(i % 21)){
+    if (!(i % (anchoDePulso/10))){
       if (value == 0xC0){
         value = 0x03;
       } else {
@@ -261,7 +262,7 @@ void Return(uint8_t id, uint8_t parameter){
   uint8_t hasParameter = 0;
   switch (id){
     case ALIVE:
-      break;
+    break;
     case ONOFF:
       hasParameter = 1;
       if (parameter == 0x00){
@@ -270,10 +271,10 @@ void Return(uint8_t id, uint8_t parameter){
       if (parameter == 0x01){
         SCOPEISON = 1;
       }
-      break;
+    break;
     case BRIDGE:
       generateBridge(1);
-      break;
+    break;
     case TRIFASICBRIDGE:
      hasParameter = 1;
       if (parameter){
@@ -281,7 +282,11 @@ void Return(uint8_t id, uint8_t parameter){
       } else {
         generateTrifasicBridge180();
       }
-      break;
+    break;
+    case PULSESIZEBRIDGE:
+      hasParameter = 1;
+      generateBridge(parameter);
+    break;
   }
   SendACK(id, parameter, hasParameter);
 }
@@ -307,7 +312,7 @@ void setup() {                                                                  
 
   stateRead = WAITINGE0;
   
-  generateBridge(1);
+  generateBridge(210);
 
   Serial.begin(9600);
 }
