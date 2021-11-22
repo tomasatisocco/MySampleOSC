@@ -76,34 +76,13 @@ void generateBridge(uint8_t f){
 }
 
 void generateTrifasicBridge(){
-  uint8_t value = 0b11100000;
-  for (uint8_t i = 0; i < 42; i++){
-    if (!(i % 7) && i != 0){
-      switch (value){
-        case 0b11100000:
-          value = 0b01110000;
-        break;
-        case 0b01110000:
-          value = 0b00111000;
-        break;
-        case 0b00111000:
-          value = 0b00011100;
-        break;
-        case 0b00011100:
-          value = 0b10001100;
-        break;
-        case 0b10001100:
-          value = 0b11000100;
-        break;
-        case 0b11000100:
-          value = 0b11100000;
-        break;
-        default:
-          value = 0b11100000;
-        break;
-      }
-    }
-    steps[i] = value;
+  for (uint8_t i = 0; i < 7; i++){
+    steps[i] = 0b11100000;
+    steps[i + 7] = 0b01110000;
+    steps[i + 14] = 0b00111000;
+    steps[i + 21] = 0b00011100;
+    steps[i + 28] = 0b10001100;
+    steps[i + 34] = 0b11000100;
   }
 }
 
