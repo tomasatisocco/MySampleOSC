@@ -26,6 +26,7 @@ typedef union{
 
 #define pi 3.1415
 
+#define   ACK             0x0D
 #define   ALIVE           0xF0
 #define   ONOFF           0xA6
 #define   BRIDGE          0xA0
@@ -232,30 +233,49 @@ void DecodeRXBuff(){
   }
 }
 
+void PutCommandIntTX(uint8_t bytes[], uint16_t lenght){
+  PutHeaderIntx();
+  PutByteIntx((lenght & 0x00FF) + 1);
+  PutByteIntx((lenght) >> 8);
+  PutByteIntx(0x3A);
+  for (uint8_t i = 0; i < lenght; i++){
+    PutByteIntx(bytes[i]);
+  }
+  PutByteIntx(checksumTX);
+}
+
 void Return(uint8_t id, uint8_t parameter){
   switch (id){
-    case ALIVE:
-      PutHeaderIntx();
-      PutByteIntx(0x03);
-      PutByteIntx(0x00);
-      PutByteIntx(0x3A);
-      PutByteIntx(0xF0);
-      PutByteIntx(0x0D);
-      PutByteIntx(checksumTX);
-    break;
-    case ONOFF:
+    case ALIVE:{
+      uint8_t bytes[2] = {ALIVE, ACK};
+      PutCommandIntTX(bytes,2);
+      break;
+    }
+    case ONOFF:{
       if (parameter == 0x00){
         SCOPEISON = 0;
+        uint8_t bytes[3] = {ONOFF, 0x00, ACK};
+        PutCommandIntTX(bytes, 3);
       }
       if (parameter == 0x01){
         SCOPEISON = 1;
+        uint8_t bytes[3] = {ONOFF, 0x01, ACK};
+        PutCommandIntTX(bytes, 3);
       }
-    break;
-    case BRIDGE:
+      break;
+    }
+    case BRIDGE:{
       generateBridge(1);
-    break;
-    case TRIFASICBRIDGE:
+      uint8_t bytes[2] = {BRIDGE, ACK};
+        PutCommandIntTX(bytes, 2);
+      break;
+    }
+    case TRIFASICBRIDGE:{
       generateTrifasicBridge();
+      uint8_t bytes[2] = {TRIFASICBRIDGE, ACK};
+        PutCommandIntTX(bytes, 2);
+      break;
+    }
   }
 }
 
