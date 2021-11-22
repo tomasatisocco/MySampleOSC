@@ -32,6 +32,7 @@ typedef union{
 #define   BRIDGE          0xA0
 #define   TRIFASICBRIDGE  0xA1
 #define   PULSESIZEBRIDGE 0xA2
+#define   PULSESQNTBRIDGE 0xA3
 
 #define   WAITINGE0   0
 #define   WAITING0E   1
@@ -68,12 +69,32 @@ void generateBridge(uint8_t anchoDePulso){
   for (uint8_t i = 0; i < 42; i++){
     if (!(i % (anchoDePulso/10))){
       if (value == 0xC0){
-        value = 0x03;
+        value = 0x30;
       } else {
         value = 0xC0;
       }
     }
     steps[i] = value;
+  }
+}
+
+void generatePulsesBridge(uint8_t pulsesQuantyty){
+  uint8_t value = 0xC0;
+  uint8_t pines;
+  for (uint8_t i = 0; i < 42; i++){
+    if (!(i % pulsesQuantyty)){
+      if (value == 0xC0){
+        value = 0x30;
+      } else {
+        value = 0xC0;
+      }
+    }
+    if (!(i % 2)){
+      pines = 0;
+    } else {
+      pines = value;
+    }
+    steps[i] = pines;
   }
 }
 
@@ -273,7 +294,7 @@ void Return(uint8_t id, uint8_t parameter){
       }
     break;
     case BRIDGE:
-      generateBridge(1);
+      generateBridge(210);
     break;
     case TRIFASICBRIDGE:
      hasParameter = 1;
@@ -286,6 +307,10 @@ void Return(uint8_t id, uint8_t parameter){
     case PULSESIZEBRIDGE:
       hasParameter = 1;
       generateBridge(parameter);
+    break;
+    case PULSESQNTBRIDGE:
+      hasParameter = 1;
+      generatePulsesBridge(parameter);
     break;
   }
   SendACK(id, parameter, hasParameter);
