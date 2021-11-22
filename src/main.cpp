@@ -26,9 +26,10 @@ typedef union{
 
 #define pi 3.1415
 
-#define   ALIVE   0xF0
-#define   ONOFF   0xA6
-#define   BRIDGE  0xA0
+#define   ALIVE           0xF0
+#define   ONOFF           0xA6
+#define   BRIDGE          0xA0
+#define   TRIFASICBRIDGE  0xA1
 
 #define   WAITINGE0   0
 #define   WAITING0E   1
@@ -42,7 +43,7 @@ typedef union{
 
 _flag flag1;
 
-void generateSteps();
+void generateBridge();
 void GenerateAndReadVoltage(unsigned long waitingTime);
 void ReadRXBuff();
 void DecodeRXBuff();
@@ -55,15 +56,15 @@ boolean TXBuffHasData();
 
 uint8_t checksumTX, checksumRX, stateRead, checksum;
 uint8_t indexWriteTX, indexReadTX, indexReadRX, indexWriteRX, indexVoltageWrite, indexVoltageRead, indexSteps;
-uint8_t steps[40], rxBuff[256], txBuff[256];
+uint8_t steps[42], rxBuff[256], txBuff[256];
 uint16_t lenghtPL, lenghtPLSaved;
 uint16_t voltageRead[30],voltageWrite[30];
 unsigned long timeout, timeout2;
 
-void generateSteps(uint8_t f){
+void generateBridge(uint8_t f){
   uint8_t value = 0xC0;
-  for (uint8_t i = 0; i < 40; i++){
-    if (!(i % 20)){
+  for (uint8_t i = 0; i < 42; i++){
+    if (!(i % 21)){
       if (value == 0xC0){
         value = 0x03;
       } else {
@@ -74,17 +75,48 @@ void generateSteps(uint8_t f){
   }
 }
 
+void generateTrifasicBridge(){
+  uint8_t value = 0b11100000;
+  for (uint8_t i = 0; i < 42; i++){
+    if (!(i % 7) && i != 0){
+      switch (value){
+        case 0b11100000:
+          value = 0b01110000;
+        break;
+        case 0b01110000:
+          value = 0b00111000;
+        break;
+        case 0b00111000:
+          value = 0b00011100;
+        break;
+        case 0b00011100:
+          value = 0b10001100;
+        break;
+        case 0b10001100:
+          value = 0b11000100;
+        break;
+        case 0b11000100:
+          value = 0b11100000;
+        break;
+        default:
+          value = 0b11100000;
+        break;
+      }
+    }
+    steps[i] = value;
+  }
+}
+
 void generateSaw(){
-  for (uint8_t i = 0; i < 255; i++){
-    steps[i] = i;
+  for (uint8_t i = 0; i < 42; i++){
+    steps[i] = i * 6;
   }
 }
 
 void generateSin(uint8_t f){
-  for (uint8_t i = 0; i < 255; i++){
-    steps[i] = 127*sin(2*pi*f*i/256)+128;
+  for (uint8_t i = 0; i < 42; i++){
+    steps[i] = 127*sin(2*pi*f*i/42)+128;
   }
-  steps[255] = 128;
 }
 
 void GenerateSquare(){
@@ -107,7 +139,7 @@ void GenerateAndReadVoltage(unsigned long waitingTime){
     digitalWrite(BIT5, steps[indexSteps] >> 5 & 1);
     digitalWrite(BIT6, steps[indexSteps] >> 6 & 1);
     digitalWrite(BIT7, steps[indexSteps] >> 7 & 1);
-    if (indexSteps++ == 40){
+    if (indexSteps++ == 41){
       indexSteps = 0;
     }
     timeout = millis();
@@ -241,8 +273,10 @@ void Return(uint8_t id, uint8_t parameter){
       }
     break;
     case BRIDGE:
-      generateSteps(1);
-    break; 
+      generateBridge(1);
+    break;
+    case TRIFASICBRIDGE:
+      generateTrifasicBridge();
   }
 }
 
@@ -267,7 +301,7 @@ void setup() {                                                                  
 
   stateRead = WAITINGE0;
   
-  generateSteps(1);
+  generateBridge(1);
 
   Serial.begin(9600);
 }
@@ -278,7 +312,7 @@ void loop() {
 
   if (SCOPEISON){
     // Cambia de valor cada tantos millisegundos como se le indica en el input
-    GenerateAndReadVoltage(20);
+    GenerateAndReadVoltage(10);
 
     // Agrega Valores al Buffer de escritura (TX) cada tantos millisegundos ccomo se le indica en el input
     AddDataToTXBuff(200);
