@@ -14,6 +14,8 @@ typedef union{
   uint8_t byte;
 }_flag;
 
+// Define the output pins as bits of the R2R and the analog read pin
+
 #define BIT0 37
 #define BIT1 39
 #define BIT2 41
@@ -22,9 +24,12 @@ typedef union{
 #define BIT5 47
 #define BIT6 49
 #define BIT7 51
+
 #define READER A14
 
 #define pi 3.1415
+
+// Define the input ID commands of the protocol
 
 #define   ACK             0x0D
 #define   ALIVE           0xF0
@@ -34,6 +39,8 @@ typedef union{
 #define   PULSESIZEBRIDGE 0xA2
 #define   PULSESQNTBRIDGE 0xA3
 
+// Define the states of the input reader
+
 #define   WAITINGE0   0
 #define   WAITING0E   1
 #define   WAITINGLB   2
@@ -41,21 +48,28 @@ typedef union{
 #define   WAITING3A   4
 #define   WAITINGPL   5
 
+//Define the used Flags
+
 #define SCOPEISON flag1.bit.b0
 #define SENDDATA flag1.bit.b1
 
 _flag flag1;
 
-void generateBridge();
+void GenerateBridgeBySize(uint8_t anchoDePulso);
+void GenerateBridgeByPulses(uint8_t pulsesQuantyty);
+void GenerateTrifasicBridge180();
+void GenerateTrifasicBridge120();
 void GenerateAndReadVoltage(unsigned long waitingTime);
-void ReadRXBuff();
-void DecodeRXBuff();
 void AddDataToTXBuff(unsigned long waitingTime);
 void PutHeaderIntx();
 void PutByteIntx(uint8_t byte);
-void Return(uint8_t id, uint8_t parameter);
-boolean RXBuffHasData();
+void SendTXData();
 boolean TXBuffHasData();
+void ReadRXBuff();
+boolean RXBuffHasData();
+void DecodeRXBuff();
+void Return(uint8_t id, uint8_t parameter);
+void SendACK(uint8_t id, uint8_t parameter, uint8_t hasParameter);
 
 uint8_t checksumTX, checksumRX, stateRead, checksum;
 uint8_t indexWriteTX, indexReadTX, indexReadRX, indexWriteRX, indexVoltageWrite, indexVoltageRead, indexSteps;
@@ -64,7 +78,9 @@ uint16_t lenghtPL, lenghtPLSaved;
 uint16_t voltageRead[30],voltageWrite[30];
 unsigned long timeout, timeout2;
 
-void generateBridge(uint8_t anchoDePulso){
+// Diferent functions to generate the shots secuences needed
+
+void GenerateBridgeBySize(uint8_t anchoDePulso){
   uint8_t value = 0xC0;
   for (uint8_t i = 0; i < 42; i++){
     if (!(i % (anchoDePulso/10))){
@@ -78,7 +94,7 @@ void generateBridge(uint8_t anchoDePulso){
   }
 }
 
-void generatePulsesBridge(uint8_t pulsesQuantyty){
+void GenerateBridgeByPulses(uint8_t pulsesQuantyty){
   uint8_t value = 0xC0;
   uint8_t pines;
   for (uint8_t i = 0; i < 42; i++){
@@ -98,7 +114,7 @@ void generatePulsesBridge(uint8_t pulsesQuantyty){
   }
 }
 
-void generateTrifasicBridge180(){
+void GenerateTrifasicBridge180(){
   for (uint8_t i = 0; i < 7; i++){
     steps[i] = 0b11100000;
     steps[i + 7] = 0b01110000;
@@ -109,7 +125,7 @@ void generateTrifasicBridge180(){
   }
 }
 
-void generateTrifasicBridge120(){
+void GenerateTrifasicBridge120(){
   for (uint8_t i = 0; i < 7; i++){
     steps[i] = 0b11000000;
     steps[i + 7] = 0b01100000;
@@ -132,15 +148,8 @@ void generateSin(uint8_t f){
   }
 }
 
-void GenerateSquare(){
-  for (uint8_t i = 0; i < 255; i++){
-    if (i < 128){
-      steps [i] = 255;
-    } else {
-      steps[i] = 0;
-    }
-  }
-}
+// Functions for chancge the output pins status, read the voltage of R2R 
+// and add the data to the TX Buffer with the communication protocol
 
 void GenerateAndReadVoltage(unsigned long waitingTime){
   if ((millis() - timeout) >= waitingTime){
@@ -189,11 +198,11 @@ void PutByteIntx(uint8_t byte){
   checksumTX += byte;
 }
 
-boolean RXBuffHasData(){
-  if (indexReadRX != indexWriteRX){
-    return true;
-  } else {
-    return false;
+void SendTXData(){
+  if(TXBuffHasData()){
+    if(Serial.availableForWrite()){
+      Serial.write(txBuff[indexReadTX++]);
+    }
   }
 }
 
@@ -205,12 +214,23 @@ boolean TXBuffHasData(){
   }
 }
 
+// Functions for Read the Serial inputs, decode it, and
+// Answer it
+
 void ReadRXBuff(){
   while (Serial.available()){
     rxBuff[indexWriteRX++] = Serial.read();
   }
   if (RXBuffHasData()){
     DecodeRXBuff();
+  }
+}
+
+boolean RXBuffHasData(){
+  if (indexReadRX != indexWriteRX){
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -266,19 +286,6 @@ void DecodeRXBuff(){
   }
 }
 
-void SendACK(uint8_t id, uint8_t parameter, uint8_t hasParameter){
-  PutHeaderIntx();
-  PutByteIntx(hasParameter + 3);
-  PutByteIntx(0x00);
-  PutByteIntx(0x3A);
-  PutByteIntx(id);
-  if (hasParameter){
-    PutByteIntx(parameter);
-  }
-  PutByteIntx(ACK);
-  PutByteIntx(checksumTX);
-}
-
 void Return(uint8_t id, uint8_t parameter){
   uint8_t hasParameter = 0;
   switch (id){
@@ -294,34 +301,39 @@ void Return(uint8_t id, uint8_t parameter){
       }
     break;
     case BRIDGE:
-      generateBridge(210);
+      GenerateBridgeBySize(210);
     break;
     case TRIFASICBRIDGE:
      hasParameter = 1;
       if (parameter){
-        generateTrifasicBridge120();
+        GenerateTrifasicBridge120();
       } else {
-        generateTrifasicBridge180();
+        GenerateTrifasicBridge180();
       }
     break;
     case PULSESIZEBRIDGE:
       hasParameter = 1;
-      generateBridge(parameter);
+      GenerateBridgeBySize(parameter);
     break;
     case PULSESQNTBRIDGE:
       hasParameter = 1;
-      generatePulsesBridge(parameter);
+      GenerateBridgeByPulses(parameter);
     break;
   }
   SendACK(id, parameter, hasParameter);
 }
 
-void SendTXData(){
-  if(TXBuffHasData()){
-    if(Serial.availableForWrite()){
-      Serial.write(txBuff[indexReadTX++]);
-    }
+void SendACK(uint8_t id, uint8_t parameter, uint8_t hasParameter){
+  PutHeaderIntx();
+  PutByteIntx(hasParameter + 3);
+  PutByteIntx(0x00);
+  PutByteIntx(0x3A);
+  PutByteIntx(id);
+  if (hasParameter){
+    PutByteIntx(parameter);
   }
+  PutByteIntx(ACK);
+  PutByteIntx(checksumTX);
 }
 
 void setup() {                                                                                                                                                                                                                                          //Tomas Tisocco maderfaker
@@ -337,7 +349,7 @@ void setup() {                                                                  
 
   stateRead = WAITINGE0;
   
-  generateBridge(210);
+  GenerateBridgeBySize(210);
 
   Serial.begin(9600);
 }
