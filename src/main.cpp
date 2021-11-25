@@ -147,15 +147,15 @@ void generateSin(uint8_t f){
 
 void GenerateAndReadVoltage(unsigned long waitingTime){
   if ((millis() - timeout) >= waitingTime){
-    digitalWrite(BIT0, steps[indexSteps]      & 1);
-    digitalWrite(BIT1, steps[indexSteps] >> 1 & 1);
-    digitalWrite(BIT2, steps[indexSteps] >> 2 & 1);
-    digitalWrite(BIT3, steps[indexSteps] >> 3 & 1);
-    digitalWrite(BIT4, steps[indexSteps] >> 4 & 1);
-    digitalWrite(BIT5, steps[indexSteps] >> 5 & 1);
-    digitalWrite(BIT6, steps[indexSteps] >> 6 & 1);
-    digitalWrite(BIT7, steps[indexSteps++] >> 7 & 1);
-    if (indexSteps == 48){
+    digitalWrite(BIT0, steps[indexSteps] & 0x01);
+    digitalWrite(BIT1, steps[indexSteps] & 0x02);
+    digitalWrite(BIT2, steps[indexSteps] & 0x04);
+    digitalWrite(BIT3, steps[indexSteps] & 0x08);
+    digitalWrite(BIT4, steps[indexSteps] & 0x10);
+    digitalWrite(BIT5, steps[indexSteps] & 0x20);
+    digitalWrite(BIT6, steps[indexSteps] & 0x40);
+    digitalWrite(BIT7, steps[indexSteps] & 0x80);
+    if (++indexSteps == 48){
       indexSteps = 0;
     }
     timeout = millis();
