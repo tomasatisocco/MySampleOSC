@@ -73,17 +73,17 @@ void SendACK(uint8_t id, uint8_t parameter, uint8_t hasParameter);
 
 uint8_t checksumTX, checksumRX, stateRead, checksum;
 uint8_t indexWriteTX, indexReadTX, indexReadRX, indexWriteRX, indexVoltageWrite, indexVoltageRead, indexSteps;
-uint8_t steps[42], rxBuff[256], txBuff[256];
+uint8_t steps[48], rxBuff[256], txBuff[256];
 uint16_t lenghtPL, lenghtPLSaved;
-uint16_t voltageRead[30],voltageWrite[30];
+uint16_t voltageRead[40],voltageWrite[40];
 unsigned long timeout, timeout2;
 
 // Diferent functions to generate the shots secuences needed
 
 void GenerateBridgeBySize(uint8_t anchoDePulso){
-  uint8_t value = 0xC0;
-  for (uint8_t i = 0; i < 42; i++){
-    if (!(i % (anchoDePulso/10))){
+  uint8_t value = 0x30;
+  for (uint8_t i = 0; i < 48; i++){
+    if (!(i % (anchoDePulso/5))){
       if (value == 0xC0){
         value = 0x30;
       } else {
@@ -160,8 +160,8 @@ void GenerateAndReadVoltage(unsigned long waitingTime){
     digitalWrite(BIT4, steps[indexSteps] >> 4 & 1);
     digitalWrite(BIT5, steps[indexSteps] >> 5 & 1);
     digitalWrite(BIT6, steps[indexSteps] >> 6 & 1);
-    digitalWrite(BIT7, steps[indexSteps] >> 7 & 1);
-    if (indexSteps++ == 41){
+    digitalWrite(BIT7, steps[indexSteps++] >> 7 & 1);
+    if (indexSteps == 48){
       indexSteps = 0;
     }
     timeout = millis();
@@ -237,16 +237,18 @@ boolean RXBuffHasData(){
 void DecodeRXBuff(){
   switch(stateRead){
     case WAITINGE0:
-      if( rxBuff[indexReadRX++] == 0xE0 ){
+      if( rxBuff[indexReadRX] == 0xE0 ){    //stateRead = WAITINGLB
         stateRead = WAITING0E;
+        indexReadRX++;
       }
     break;
       case WAITING0E:
-      if( rxBuff[indexReadRX++] == 0x0E ){
+      if( rxBuff[indexReadRX] == 0x0E ){
         stateRead = WAITINGLB;
       } else {
         stateRead = WAITINGE0;
       }
+      indexReadRX++;
     break;
     case WAITINGLB:
       lenghtPL = rxBuff[indexReadRX];
@@ -293,10 +295,9 @@ void Return(uint8_t id, uint8_t parameter){
     break;
     case ONOFF:
       hasParameter = 1;
-      if (parameter == 0x00){
+      if (!parameter){
         SCOPEISON = 0;
-      }
-      if (parameter == 0x01){
+      }else if (parameter){
         SCOPEISON = 1;
       }
     break;
@@ -349,7 +350,7 @@ void setup() {                                                                  
 
   stateRead = WAITINGE0;
   
-  GenerateBridgeBySize(210);
+  GenerateBridgeBySize(10);
 
   Serial.begin(9600);
 }
@@ -361,7 +362,6 @@ void loop() {
   if (SCOPEISON){
     // Cambia de valor cada tantos millisegundos como se le indica en el input
     GenerateAndReadVoltage(10);
-
     // Agrega Valores al Buffer de escritura (TX) cada tantos millisegundos ccomo se le indica en el input
     AddDataToTXBuff(200);
   }
