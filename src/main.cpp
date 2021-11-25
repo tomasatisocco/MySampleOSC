@@ -97,8 +97,8 @@ void GenerateBridgeBySize(uint8_t anchoDePulso){
 void GenerateBridgeByPulses(uint8_t pulsesQuantyty){
   uint8_t value = 0xC0;
   uint8_t pines;
-  for (uint8_t i = 0; i < 42; i++){
-    if (!(i % pulsesQuantyty)){
+  for (uint8_t i = 0; i < 48; i++){
+    if (!(i % (pulsesQuantyty * 2))){
       if (value == 0xC0){
         value = 0x30;
       } else {
@@ -106,9 +106,9 @@ void GenerateBridgeByPulses(uint8_t pulsesQuantyty){
       }
     }
     if (!(i % 2)){
-      pines = 0;
-    } else {
       pines = value;
+    } else {
+      pines = 0;
     }
     steps[i] = pines;
   }
