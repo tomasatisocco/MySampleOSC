@@ -115,36 +115,30 @@ void GenerateBridgeByPulses(uint8_t pulsesQuantyty){
 }
 
 void GenerateTrifasicBridge180(){
-  for (uint8_t i = 0; i < 7; i++){
+  for (uint8_t i = 0; i < 8; i++){
     steps[i] = 0b11100000;
-    steps[i + 7] = 0b01110000;
-    steps[i + 14] = 0b00111000;
-    steps[i + 21] = 0b00011100;
-    steps[i + 28] = 0b10001100;
-    steps[i + 34] = 0b11000100;
+    steps[i + 8] = 0b01110000;
+    steps[i + 16] = 0b00111000;
+    steps[i + 24] = 0b00011100;
+    steps[i + 32] = 0b10001100;
+    steps[i + 40] = 0b11000100;
   }
 }
 
 void GenerateTrifasicBridge120(){
-  for (uint8_t i = 0; i < 7; i++){
+  for (uint8_t i = 0; i < 8; i++){
     steps[i] = 0b11000000;
-    steps[i + 7] = 0b01100000;
-    steps[i + 14] = 0b00110000;
-    steps[i + 21] = 0b00011000;
-    steps[i + 28] = 0b00001100;
-    steps[i + 34] = 0b10000100;
-  }
-}
-
-void generateSaw(){
-  for (uint8_t i = 0; i < 42; i++){
-    steps[i] = i * 6;
+    steps[i + 8] = 0b01100000;
+    steps[i + 16] = 0b00110000;
+    steps[i + 24] = 0b00011000;
+    steps[i + 32] = 0b00001100;
+    steps[i + 40] = 0b10000100;
   }
 }
 
 void generateSin(uint8_t f){
-  for (uint8_t i = 0; i < 42; i++){
-    steps[i] = 127*sin(2*pi*f*i/42)+128;
+  for (uint8_t i = 0; i < 48; i++){
+    steps[i] = 127*sin(2*pi*f*i/48)+128;
   }
 }
 
