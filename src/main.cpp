@@ -231,18 +231,16 @@ boolean RXBuffHasData(){
 void DecodeRXBuff(){
   switch(stateRead){
     case WAITINGE0:
-      if( rxBuff[indexReadRX] == 0xE0 ){    //stateRead = WAITINGLB
+      if( rxBuff[indexReadRX++] == 0xE0 ){    //stateRead = WAITINGLB
         stateRead = WAITING0E;
-        indexReadRX++;
       }
     break;
       case WAITING0E:
-      if( rxBuff[indexReadRX] == 0x0E ){
+      if( rxBuff[indexReadRX++] == 0x0E ){
         stateRead = WAITINGLB;
       } else {
         stateRead = WAITINGE0;
       }
-      indexReadRX++;
     break;
     case WAITINGLB:
       lenghtPL = rxBuff[indexReadRX];
@@ -286,17 +284,20 @@ void Return(uint8_t id, uint8_t parameter){
   uint8_t hasParameter = 0;
   switch (id){
     case ALIVE:
+    SendACK(id, parameter, hasParameter);
     break;
     case ONOFF:
       hasParameter = 1;
       if (!parameter){
         SCOPEISON = 0;
-      }else if (parameter){
+      } else {
         SCOPEISON = 1;
       }
+      SendACK(id, parameter, hasParameter);
     break;
     case BRIDGE:
-      GenerateBridgeBySize(210);
+      GenerateBridgeBySize(40);
+      SendACK(id, parameter, hasParameter);
     break;
     case TRIFASICBRIDGE:
      hasParameter = 1;
@@ -305,17 +306,19 @@ void Return(uint8_t id, uint8_t parameter){
       } else {
         GenerateTrifasicBridge180();
       }
+      SendACK(id, parameter, hasParameter);
     break;
     case PULSESIZEBRIDGE:
       hasParameter = 1;
       GenerateBridgeBySize(parameter);
+      SendACK(id, parameter, hasParameter);
     break;
     case PULSESQNTBRIDGE:
       hasParameter = 1;
       GenerateBridgeByPulses(parameter);
+      SendACK(id, parameter, hasParameter);
     break;
   }
-  SendACK(id, parameter, hasParameter);
 }
 
 void SendACK(uint8_t id, uint8_t parameter, uint8_t hasParameter){
