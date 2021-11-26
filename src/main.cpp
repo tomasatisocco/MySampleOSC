@@ -38,6 +38,7 @@ typedef union{
 #define   TRIFASICBRIDGE  0xA1
 #define   PULSESIZEBRIDGE 0xA2
 #define   PULSESQNTBRIDGE 0xA3
+#define   CHANGEBITS      0xA7
 
 // Define the states of the input reader
 
@@ -60,6 +61,7 @@ void GenerateBridgeByPulses(uint8_t pulsesQuantyty);
 void GenerateTrifasicBridge180();
 void GenerateTrifasicBridge120();
 void GenerateAndReadVoltage(unsigned long waitingTime);
+void ChangePinsValue(uint8_t pin, uint8_t value);
 void AddDataToTXBuff(unsigned long waitingTime);
 void PutHeaderIntx();
 void PutByteIntx(uint8_t byte);
@@ -73,7 +75,7 @@ void SendACK(uint8_t id, uint8_t parameter, uint8_t hasParameter);
 
 uint8_t checksumTX, checksumRX, stateRead, checksum;
 uint8_t indexWriteTX, indexReadTX, indexReadRX, indexWriteRX, indexVoltageWrite, indexVoltageRead, indexSteps;
-uint8_t steps[48], rxBuff[256], txBuff[256];
+uint8_t steps[48], rxBuff[256], txBuff[256], pinsValue;
 uint16_t lenghtPL, lenghtPLSaved;
 uint16_t voltageRead[40],voltageWrite[40];
 unsigned long timeout, timeout2;
@@ -133,6 +135,17 @@ void GenerateTrifasicBridge120(){
     steps[i + 24] = 0b00011000;
     steps[i + 32] = 0b00001100;
     steps[i + 40] = 0b10000100;
+  }
+}
+
+void ChangePinsValue(uint8_t pin, uint8_t value){
+  if (value == 0){
+    pinsValue &= ~(0x01 << pin);
+  } else {
+    pinsValue |= (0x01 << pin);
+  }
+  for (uint8_t i = 0; i < 48; i++){
+    steps[i] = pinsValue;
   }
 }
 
@@ -317,6 +330,10 @@ void Return(uint8_t id, uint8_t parameter){
       hasParameter = 1;
       GenerateBridgeByPulses(parameter);
       SendACK(id, parameter, hasParameter);
+    break;
+    case CHANGEBITS:
+      ChangePinsValue(parameter, rxBuff[(indexReadRX - lenghtPLSaved) + 2]);
+      SendACK(id,pinsValue,1);
     break;
   }
 }
