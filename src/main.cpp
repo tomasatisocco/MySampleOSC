@@ -85,7 +85,7 @@ unsigned long timeout, timeout2;
 void GenerateBridgeBySize(uint8_t anchoDePulso){
   uint8_t value = 0x30;
   for (uint8_t i = 0; i < 48; i++){
-    if (!(i % (anchoDePulso/5))){
+    if (!(i % (anchoDePulso))){
       if (value == 0xC0){
         value = 0x30;
       } else {
@@ -159,7 +159,7 @@ void generateSin(uint8_t f){
 // and add the data to the TX Buffer with the communication protocol
 
 void GenerateAndReadVoltage(unsigned long waitingTime){
-  if ((millis() - timeout) >= waitingTime){
+  if ((micros() - timeout) >= waitingTime){
     digitalWrite(BIT0, steps[indexSteps] & 0x01);
     digitalWrite(BIT1, steps[indexSteps] & 0x02);
     digitalWrite(BIT2, steps[indexSteps] & 0x04);
@@ -171,7 +171,7 @@ void GenerateAndReadVoltage(unsigned long waitingTime){
     if (++indexSteps == 48){
       indexSteps = 0;
     }
-    timeout = millis();
+    timeout = micros();
     voltageRead[indexVoltageRead++] = analogRead(READER);
   }
 }
@@ -364,9 +364,9 @@ void setup() {                                                                  
 
   stateRead = WAITINGE0;
   
-  GenerateBridgeBySize(10);
+  GenerateBridgeBySize(2);
 
-  Serial.begin(9600);
+  Serial.begin(115200);
 }
 
 void loop() {
@@ -374,10 +374,10 @@ void loop() {
   ReadRXBuff();
 
   if (SCOPEISON){
-    // Cambia de valor cada tantos millisegundos como se le indica en el input
-    GenerateAndReadVoltage(10);
+    // Cambia de valor cada tantos microsegundos como se le indica en el input
+    GenerateAndReadVoltage(500);
     // Agrega Valores al Buffer de escritura (TX) cada tantos millisegundos ccomo se le indica en el input
-    AddDataToTXBuff(200);
+    AddDataToTXBuff(20);
   }
 
   SendTXData();
