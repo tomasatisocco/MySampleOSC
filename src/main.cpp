@@ -75,14 +75,14 @@ void SendACK(uint8_t id, uint8_t parameter, uint8_t hasParameter);
 
 uint8_t checksumTX, checksumRX, stateRead, checksum;
 uint8_t indexWriteTX, indexReadTX, indexReadRX, indexWriteRX, indexVoltageWrite, indexVoltageRead, indexSteps;
-uint8_t steps[40], rxBuff[256], txBuff[256], pinsValue;
+uint8_t steps[40], rxBuff[256], txBuff[256], pinsValue, numberOfSteps;
 uint16_t lenghtPL, lenghtPLSaved;
 uint16_t voltageRead[40],voltageWrite[40];
 unsigned long timeout, timeout2;
 
 // Diferent functions to generate the shots secuences needed
 
-void GenerateBridgeBySize(uint8_t anchoDePulso){
+void GenerateBridgeBySize(uint8_t anchoDePulso){ // Funciona utilizando anchos de pulso de medio ciclo de hasta 10ms;
   for (uint8_t i = 0; i < 20; i++){
     if ((i >= (10 - anchoDePulso)) && (i <= 10 + anchoDePulso)){
       steps[i] = 0x30;
@@ -93,9 +93,10 @@ void GenerateBridgeBySize(uint8_t anchoDePulso){
       steps[i + 20] = 0x00;
     }
   }
+  numberOfSteps = 40;
 }
 
-void GenerateBridgeByPulses(uint8_t pulsesQuantyty){
+void GenerateBridgeByPulses(uint8_t pulsesQuantyty){ // Solo funciona con cantidades de 1 2 5 o 10;
   uint8_t counter = 0;
   uint8_t value1 = 0xC0;
   uint8_t value2 = 0x30;
@@ -113,28 +114,31 @@ void GenerateBridgeByPulses(uint8_t pulsesQuantyty){
     steps[i] = value1;
     steps[i + 20] = value2;
   }
+  numberOfSteps = 40;
 }
 
-void GenerateTrifasicBridge180(){
-  for (uint8_t i = 0; i < 8; i++){
-    steps[i] = 0b11100000;
-    steps[i + 8] = 0b01110000;
-    steps[i + 16] = 0b00111000;
-    steps[i + 24] = 0b00011100;
-    steps[i + 32] = 0b10001100;
-    steps[i + 40] = 0b11000100;
+void GenerateTrifasicBridge180(uint8_t f){ // 1 < f < 6;
+  for (uint8_t i = 0; i < f; i++){
+    steps[i + 0 * f] = 0b11100000;
+    steps[i + 1 * f] = 0b01110000;
+    steps[i + 2 * f] = 0b00111000;
+    steps[i + 3 * f] = 0b00011100;
+    steps[i + 4 * f] = 0b10001100;
+    steps[i + 5 * f] = 0b11000100;
   }
+  numberOfSteps = 6 * f;
 }
 
-void GenerateTrifasicBridge120(){
+void GenerateTrifasicBridge120(uint8_t f){ // 1 < f < 6;
   for (uint8_t i = 0; i < 8; i++){
-    steps[i] = 0b11000000;
-    steps[i + 8] = 0b01100000;
-    steps[i + 16] = 0b00110000;
-    steps[i + 24] = 0b00011000;
-    steps[i + 32] = 0b00001100;
-    steps[i + 40] = 0b10000100;
+    steps[i + 0 * f] = 0b11000000;
+    steps[i + 1 * f] = 0b01100000;
+    steps[i + 2 * f] = 0b00110000;
+    steps[i + 3 * f] = 0b00011000;
+    steps[i + 4 * f] = 0b00001100;
+    steps[i + 5 * f] = 0b10000100;
   }
+  numberOfSteps = 6 * f;
 }
 
 void ChangePinsValue(uint8_t pin, uint8_t value){
@@ -143,14 +147,14 @@ void ChangePinsValue(uint8_t pin, uint8_t value){
   } else {
     pinsValue |= (0x01 << pin);
   }
-  for (uint8_t i = 0; i < 48; i++){
+  for (uint8_t i = 0; i < 40; i++){
     steps[i] = pinsValue;
   }
 }
 
 void generateSin(uint8_t f){
-  for (uint8_t i = 0; i < 48; i++){
-    steps[i] = 127*sin(2*pi*f*i/48)+128;
+  for (uint8_t i = 0; i < 40; i++){
+    steps[i] = 127*sin(2*pi*f*i/40)+128;
   }
 }
 
@@ -167,7 +171,7 @@ void GenerateAndReadVoltage(unsigned long waitingTime){
     digitalWrite(BIT5, steps[indexSteps] & 0x20);
     digitalWrite(BIT6, steps[indexSteps] & 0x40);
     digitalWrite(BIT7, steps[indexSteps] & 0x80);
-    if (++indexSteps == 40){
+    if (++indexSteps == numberOfSteps){
       indexSteps = 0;
     }
     timeout = micros();
@@ -314,9 +318,9 @@ void Return(uint8_t id, uint8_t parameter){
     case TRIFASICBRIDGE:
      hasParameter = 1;
       if (parameter){
-        GenerateTrifasicBridge120();
+        GenerateTrifasicBridge120(6);
       } else {
-        GenerateTrifasicBridge180();
+        GenerateTrifasicBridge180(6);
       }
       SendACK(id, parameter, hasParameter);
     break;
