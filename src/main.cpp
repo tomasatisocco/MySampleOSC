@@ -90,27 +90,28 @@ void GenerateBridgeBySize(uint8_t anchoDePulso){
     }
     else {
       steps[i] = 0x00;
+      steps[i + 20] = 0x00;
     }
   }
 }
 
 void GenerateBridgeByPulses(uint8_t pulsesQuantyty){
-  uint8_t value = 0xC0;
-  uint8_t pines;
-  for (uint8_t i = 0; i < 48; i++){
-    if (!(i % (pulsesQuantyty * 2))){
-      if (value == 0xC0){
-        value = 0x30;
+  uint8_t counter = 0;
+  uint8_t value1 = 0xC0;
+  uint8_t value2 = 0x30;
+  for (uint8_t i = 0; i < 20; i++){
+    if (counter == (20 / (pulsesQuantyty * 2))){
+      if (!value1){
+        value1 = 0xC0;
+        value2 = 0x30;
       } else {
-        value = 0xC0;
+        value1 = value2 = 0;
       }
+      counter = 0;
     }
-    if (!(i % 2)){
-      pines = value;
-    } else {
-      pines = 0;
-    }
-    steps[i] = pines;
+    counter++;
+    steps[i] = value1;
+    steps[i + 20] = value2;
   }
 }
 
@@ -307,7 +308,7 @@ void Return(uint8_t id, uint8_t parameter){
       SendACK(id, parameter, hasParameter);
     break;
     case BRIDGE:
-      GenerateBridgeBySize(40);
+      GenerateBridgeBySize(20);
       SendACK(id, parameter, hasParameter);
     break;
     case TRIFASICBRIDGE:
