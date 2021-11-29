@@ -75,7 +75,7 @@ void SendACK(uint8_t id, uint8_t parameter, uint8_t hasParameter);
 
 uint8_t checksumTX, checksumRX, stateRead, checksum;
 uint8_t indexWriteTX, indexReadTX, indexReadRX, indexWriteRX, indexVoltageWrite, indexVoltageRead, indexSteps;
-uint8_t steps[48], rxBuff[256], txBuff[256], pinsValue;
+uint8_t steps[40], rxBuff[256], txBuff[256], pinsValue;
 uint16_t lenghtPL, lenghtPLSaved;
 uint16_t voltageRead[40],voltageWrite[40];
 unsigned long timeout, timeout2;
@@ -83,16 +83,14 @@ unsigned long timeout, timeout2;
 // Diferent functions to generate the shots secuences needed
 
 void GenerateBridgeBySize(uint8_t anchoDePulso){
-  uint8_t value = 0x30;
-  for (uint8_t i = 0; i < 48; i++){
-    if (!(i % (anchoDePulso))){
-      if (value == 0xC0){
-        value = 0x30;
-      } else {
-        value = 0xC0;
-      }
+  for (uint8_t i = 0; i < 20; i++){
+    if ((i >= (10 - anchoDePulso)) && (i <= 10 + anchoDePulso)){
+      steps[i] = 0x30;
+      steps[i + 20] = 0xC0;
     }
-    steps[i] = value;
+    else {
+      steps[i] = 0x00;
+    }
   }
 }
 
@@ -168,7 +166,7 @@ void GenerateAndReadVoltage(unsigned long waitingTime){
     digitalWrite(BIT5, steps[indexSteps] & 0x20);
     digitalWrite(BIT6, steps[indexSteps] & 0x40);
     digitalWrite(BIT7, steps[indexSteps] & 0x80);
-    if (++indexSteps == 48){
+    if (++indexSteps == 40){
       indexSteps = 0;
     }
     timeout = micros();
@@ -364,7 +362,7 @@ void setup() {                                                                  
 
   stateRead = WAITINGE0;
   
-  GenerateBridgeBySize(2);
+  GenerateBridgeBySize(10);
 
   Serial.begin(115200);
 }
