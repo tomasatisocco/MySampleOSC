@@ -82,6 +82,8 @@ unsigned long timeout, timeout2;
 
 // Diferent functions to generate the shots secuences needed
 
+// La variable anchoDePulso indica el ancho en milisegundos de cada pulso.
+// Esta variable es necesario multiplicarla por dos para traducirla a ancho de pulso en pasos. 
 void GenerateBridgeBySize(uint8_t anchoDePulso){ // Funciona utilizando anchos de pulso de medio ciclo de hasta 10ms;
   for (uint8_t i = 0; i < 20; i++){
     if ((i >= (10 - anchoDePulso)) && (i <= 10 + anchoDePulso)){
@@ -96,10 +98,12 @@ void GenerateBridgeBySize(uint8_t anchoDePulso){ // Funciona utilizando anchos d
   numberOfSteps = 40;
 }
 
+// La variable pulsesQuantity indica la cantidad de pulsos por semi ciclo requeridos.
+// La cantidad de intervalos en cada semiciclo sera esta cantidad de pulsos por dos
 void GenerateBridgeByPulses(uint8_t pulsesQuantyty){ // Solo funciona con cantidades de 1 2 5 o 10;
-  uint8_t counter = 0;
-  uint8_t value1 = 0xC0;
-  uint8_t value2 = 0x30;
+  uint8_t counter;
+  uint8_t value1;
+  uint8_t value2;
   for (uint8_t i = 0; i < 20; i++){
     if (counter == (20 / (pulsesQuantyty * 2))){
       if (!value1){
@@ -117,18 +121,22 @@ void GenerateBridgeByPulses(uint8_t pulsesQuantyty){ // Solo funciona con cantid
   numberOfSteps = 40;
 }
 
-void GenerateTrifasicBridge180(uint8_t f){ // 1 < f < 7;
-  for (uint8_t i = 0; i < f; i++){
-    steps[i + 0 * f] = 0b11100000;
-    steps[i + 1 * f] = 0b01110000;
-    steps[i + 2 * f] = 0b00111000;
-    steps[i + 3 * f] = 0b00011100;
-    steps[i + 4 * f] = 0b10001100;
-    steps[i + 5 * f] = 0b11000100;
+// La variable pasosPorPulso indica el ancho, en pasos, de cada pulso del inversor.
+// En este programa siempre utilizaremos 7 pasos por puslo que genera la frecuencia mas cercana a 50Hz
+void GenerateTrifasicBridge180(uint8_t pasosPorPulso){ // 1 < f < 7;
+  for (uint8_t i = 0; i < pasosPorPulso; i++){
+    steps[i + 0 * pasosPorPulso] = 0b11100000;
+    steps[i + 1 * pasosPorPulso] = 0b01110000;
+    steps[i + 2 * pasosPorPulso] = 0b00111000;
+    steps[i + 3 * pasosPorPulso] = 0b00011100;
+    steps[i + 4 * pasosPorPulso] = 0b10001100;
+    steps[i + 5 * pasosPorPulso] = 0b11000100;
   }
-  numberOfSteps = 6 * f;
+  numberOfSteps = 6 * pasosPorPulso;
 }
 
+// La variable pasosPorPulso indica el ancho, en pasos, de cada pulso del inversor.
+// En este programa siempre utilizaremos 7 pasos por puslo que genera la frecuencia mas cercana a 50Hz
 void GenerateTrifasicBridge120(uint8_t pasosPorPuslo){ // 1 < pasosPorPulso < 7;  pasosPorPulso = 7 genera 47,7 Hz.
   for (uint8_t i = 0; i < pasosPorPuslo; i++){
     steps[i + 0 * pasosPorPuslo] = 0b11000000;
@@ -141,6 +149,7 @@ void GenerateTrifasicBridge120(uint8_t pasosPorPuslo){ // 1 < pasosPorPulso < 7;
   numberOfSteps = 6 * pasosPorPuslo;
 }
 
+// Esta funcion setea el pin seleccionado en el valor pasado, este valor puedeser de 1 o 0;
 void ChangePinsValue(uint8_t pin, uint8_t value){
   if (value == 0){
     pinsValue &= ~(0x01 << pin);
